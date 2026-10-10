@@ -9,14 +9,20 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 from .config import Config, load_config
 from .delivery import send_to_topic
 from .routing import format_message, parse_command
+from .admin import AdminCommands
+from .store import RouteStore
+from .secrets import load_token
 
 logger = logging.getLogger(__name__)
 
 
-def make_handler(config: Config):
+def make_handler(config_source):
     async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
-        if not message or message.chat_id != config.chat_id:
+        if not message:
+            return
+        config = config_source(message.chat_id) if callable(config_source) else config_source
+        if message.chat_id != config.chat_id:
             return
         user = message.from_user
         if user and user.is_bot:
@@ -45,14 +51,18 @@ async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def main() -> None:
-    token = os.getenv("TOPIC_FORWARD_BOT_TOKEN") or os.getenv("BOT_TOKEN")
-    if not token:
-        raise RuntimeError("Задайте TOPIC_FORWARD_BOT_TOKEN")
-    config = load_config(Path(__file__).resolve().parents[1] / "config.yaml")
+    token = load_token()
+    root = Path(__file__).resolve().parents[1]
+    config_path = root / "config.yaml"
+    legacy = load_config(config_path) if config_path.exists() else None
+    store = RouteStore(Path(os.getenv("FORWARDER_DB", str(root / "data/routes.sqlite3"))), legacy)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     app = Application.builder().token(token).build()
-    app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.StatusUpdate.ALL, make_handler(config)))
+    for handler in AdminCommands(store).handlers():
+        app.add_handler(handler)
+    app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.StatusUpdate.ALL, make_handler(store.config_for)))
     app.add_error_handler(on_error)
-    app.run_polling(drop_pending_updates=True, allowed_updates=["message"])
+    logger.info("Bot starting; routes can be assigned with /bind")
+    app.run_polling(drop_pending_updates=False, allowed_updates=["message"])

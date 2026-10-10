@@ -1,0 +1,11 @@
+**
+!requirements.txt
+!main.py
+!forwarder/
+!forwarder/**
+!tests/
+!tests/**
+!scripts/
+!scripts/check_bot.py
+**/__pycache__/
+**/*.pyc

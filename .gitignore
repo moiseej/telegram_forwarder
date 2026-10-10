@@ -4,3 +4,5 @@ __pycache__/
 config.yaml
 .env
 artifacts/
+.secrets/
+data/

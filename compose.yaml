@@ -1,0 +1,29 @@
+name: telegram-forwarder
+services:
+  bot:
+    image: telegram-forwarder:local
+    build: .
+    restart: unless-stopped
+    environment:
+      BOT_TOKEN_FILE: /run/secrets/bot_token
+      FORWARDER_DB: /data/routes.sqlite3
+    secrets:
+      - bot_token
+    volumes:
+      - routes:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      options:
+        max-size: 5m
+        max-file: "2"
+secrets:
+  bot_token:
+    file: .secrets/bot_token.txt
+volumes:
+  routes:

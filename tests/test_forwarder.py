@@ -9,6 +9,7 @@ from telegram.error import BadRequest
 from forwarder.app import make_handler
 from forwarder.config import Config, load_config
 from forwarder.delivery import send_to_topic
+from forwarder.errors import delivery_error_message
 from forwarder.routing import parse_command
 
 
@@ -162,6 +163,24 @@ class DeliveryTests(unittest.IsolatedAsyncioTestCase):
             await send_to_topic(bot, -100, 12, "hello")
         self.assertEqual(bot.send_message.await_count, 2)
         bot.reopen_forum_topic.assert_awaited_once()
+
+
+class ErrorMessageTests(unittest.TestCase):
+    def test_known_errors_are_actionable(self):
+        cases = {
+            "Bad Request: message thread not found": "не нашёл тему",
+            "Bad Request: TOPIC_CLOSED": "нет права открыть",
+            "Forbidden: not enough rights": "Управление темами",
+            "Bad Request: chat not found": "не имеет доступа",
+            "Bad Request: message is too long": "слишком длинное",
+        }
+        for error, expected in cases.items():
+            with self.subTest(error=error):
+                self.assertIn(expected, delivery_error_message(Exception(error)))
+
+    def test_unknown_error_does_not_echo_details(self):
+        secret = "sensitive-value"
+        self.assertNotIn(secret, delivery_error_message(Exception(secret)))
 
 
 if __name__ == "__main__":

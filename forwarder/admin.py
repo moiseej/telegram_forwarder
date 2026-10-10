@@ -23,7 +23,7 @@ class AdminCommands:
         if update.message:
             await update.message.reply_text(HELP)
 
-    async def authorize(self, message, bot) -> bool:
+    async def authorize(self, message, bot, require_manage_topics: bool = False) -> bool:
         if message.chat.type != "supergroup" or not message.chat.is_forum:
             await message.reply_text("Настраивайте бота в группе с включёнными темами.")
             return False
@@ -42,11 +42,14 @@ class AdminCommands:
         if own.status != "administrator":
             await message.reply_text("Сначала назначьте бота администратором группы.")
             return False
+        if require_manage_topics and not getattr(own, "can_manage_topics", False):
+            await message.reply_text("В правах администратора бота включите «Управление темами», затем повторите /bind.")
+            return False
         return True
 
     async def bind(self, update, context):
         message = update.message
-        if not message or not await self.authorize(message, context.bot):
+        if not message or not await self.authorize(message, context.bot, require_manage_topics=True):
             return
         if len(context.args) != 1:
             await message.reply_text("В нужной теме отправьте /bind к (один код команды).")

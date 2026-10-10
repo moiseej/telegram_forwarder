@@ -7,5 +7,7 @@
 !tests/**
 !scripts/
 !scripts/check_bot.py
+!scripts/diagnose_routes.py
+!scripts/verify_delivery.py
 **/__pycache__/
 **/*.pyc

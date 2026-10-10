@@ -60,7 +60,7 @@ class AdminTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(self.tmp.cleanup)
         self.store = RouteStore(Path(self.tmp.name) / "routes.sqlite3")
         self.admin = AdminCommands(self.store)
-        self.bot = NS(id=9, username="mybot", get_chat_member=AsyncMock(return_value=NS(status="administrator")),
+        self.bot = NS(id=9, username="mybot", get_chat_member=AsyncMock(return_value=NS(status="administrator", can_manage_topics=True)),
                       send_message=AsyncMock(), send_photo=AsyncMock(), reopen_forum_topic=AsyncMock())
         self.message = NS(chat_id=-100, chat=NS(type="supergroup", is_forum=True), sender_chat=None,
                           from_user=NS(id=1, is_bot=False, username="alice", full_name="Alice"),
@@ -93,7 +93,13 @@ class AdminTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.store.config_for(-100).topics, {})
 
     async def test_bot_requires_admin(self):
-        self.bot.get_chat_member.side_effect = [NS(status="administrator"), NS(status="member")]
+        self.bot.get_chat_member.side_effect = [NS(status="administrator"), NS(status="member", can_manage_topics=False)]
+        await self.admin.bind(self.update, self.context)
+        self.assertEqual(self.store.config_for(-100).topics, {})
+
+    async def test_bind_requires_manage_topics(self):
+        self.bot.get_chat_member.side_effect = [NS(status="administrator"),
+                                                NS(status="administrator", can_manage_topics=False)]
         await self.admin.bind(self.update, self.context)
         self.assertEqual(self.store.config_for(-100).topics, {})
 
@@ -124,6 +130,6 @@ class AdminTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_revoked_admin_permissions_checked_again(self):
         await self.admin.bind(self.update, self.context)
-        self.bot.get_chat_member.side_effect = [NS(status="member"), NS(status="administrator")]
+        self.bot.get_chat_member.side_effect = [NS(status="member"), NS(status="administrator", can_manage_topics=True)]
         await self.admin.unbind(self.update, self.context)
         self.assertEqual(self.store.config_for(-100).topics, {"/к": 12})

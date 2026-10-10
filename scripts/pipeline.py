@@ -24,18 +24,20 @@ def run(argv: list[str], task: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task", choices=["setup", "configure", "test", "run", "docker-build", "docker-test", "docker-check", "docker-up", "docker-status", "docker-down"])
+    parser.add_argument("task", choices=["setup", "configure", "test", "run", "docker-build", "docker-test", "docker-check", "docker-diagnose", "docker-verify-delivery", "docker-up", "docker-status", "docker-down"])
     task = parser.parse_args().task
     if task.startswith("docker-"):
         commands = {
             "docker-build": ["docker", "build", "-t", "telegram-forwarder:local", "."],
             "docker-test": ["docker", "run", "--rm", "--network", "none", "--read-only", "--tmpfs", "/tmp", "telegram-forwarder:local", "python", "-m", "unittest", "discover", "-s", "tests", "-v"],
             "docker-check": ["docker", "compose", "run", "--rm", "--no-deps", "bot", "python", "scripts/check_bot.py"],
+            "docker-diagnose": ["docker", "compose", "run", "--rm", "--no-deps", "bot", "python", "scripts/diagnose_routes.py"],
+            "docker-verify-delivery": ["docker", "compose", "run", "--rm", "--no-deps", "bot", "python", "scripts/verify_delivery.py"],
             "docker-up": ["docker", "compose", "up", "-d", "--no-build"],
             "docker-status": [sys.executable, "scripts/check_container.py"],
             "docker-down": ["docker", "compose", "down"],
         }
-        if task in ("docker-check", "docker-up") and not (ROOT / ".secrets/bot_token.txt").is_file():
+        if task in ("docker-check", "docker-diagnose", "docker-verify-delivery", "docker-up") and not (ROOT / ".secrets/bot_token.txt").is_file():
             parser.error("Save the bot token in .secrets/bot_token.txt first")
         run(commands[task], task)
         return

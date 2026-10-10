@@ -8,6 +8,7 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from .config import Config, load_config
 from .delivery import send_to_topic
+from .errors import delivery_error_message
 from .routing import format_message, parse_command
 from .admin import AdminCommands
 from .store import RouteStore
@@ -40,7 +41,12 @@ def make_handler(config_source):
         if len(text.encode("utf-16-le")) // 2 > (1024 if photo else 4096):
             await message.reply_text("Сообщение с подписью автора слишком длинное. Сократите текст.")
             return
-        await send_to_topic(context.bot, config.chat_id, route.topic_id, text, photo)
+        try:
+            await send_to_topic(context.bot, config.chat_id, route.topic_id, text, photo)
+        except Exception as error:
+            logger.warning("Delivery rejected (%s)", type(error).__name__)
+            await message.reply_text(delivery_error_message(error))
+            return
         logger.info("Sent message_id=%s to topic=%s", message.message_id, route.topic_id)
     return handle
 

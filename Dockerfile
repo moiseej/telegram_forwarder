@@ -7,5 +7,7 @@ COPY forwarder/ forwarder/
 COPY main.py ./
 COPY tests/ tests/
 COPY scripts/check_bot.py scripts/check_bot.py
+COPY scripts/diagnose_routes.py scripts/diagnose_routes.py
+COPY scripts/verify_delivery.py scripts/verify_delivery.py
 USER bot
 CMD ["python", "main.py"]

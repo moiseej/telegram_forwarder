@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import AsyncMock
 
 from telegram.error import BadRequest
-from forwarder.admin import AdminCommands
+from forwarder.admin import AdminCommands, HELP
 from forwarder.app import make_handler
 from forwarder.config import Config
 from forwarder.store import RouteStore, normalize_code
@@ -52,6 +52,14 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.bind(-100, "extra", 51)
         self.store.bind(-200, "extra", 51)
+
+
+class HelpTests(unittest.TestCase):
+    def test_help_explains_how_to_disable_new_group_additions(self):
+        self.assertIn("@BotFather", HELP)
+        self.assertIn("Настройки бота", HELP)
+        self.assertIn("Allow Groups", HELP)
+        self.assertIn("не удалится", HELP)
 
 
 class AdminTests(unittest.IsolatedAsyncioTestCase):
